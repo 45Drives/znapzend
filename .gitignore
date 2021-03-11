@@ -35,3 +35,7 @@ dump.dmp
 *.selftest-rewritten
 *~
 conftools
+
+debian/autoreconf*
+debian/znapzend.debhelper.log
+dist/
