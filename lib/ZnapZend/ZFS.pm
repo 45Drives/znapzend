@@ -202,7 +202,6 @@ sub listDataSets {
 
     my @dataSets = <$dataSets>;
     chomp(@dataSets);
-
     return \@dataSets;
 }
 
@@ -626,7 +625,7 @@ sub sendRecvSnapshots {
                     ) if (!$lastCommon && $dstSnapCountAll>0);
         } else {
             Mojo::Exception->throw('ERROR: snapshot(s) exist on destination, but '
-            . 'no common found on source and destination: clean up destination '
+            . 'no common found on source:' $srcDataSet 'and destination:' $dstDataSet ' clean up destination '
             . $dstDataSet . ' (i.e. destroy existing snapshots)');
         }
     }
@@ -657,7 +656,7 @@ sub sendRecvSnapshots {
                 print STDERR "# " . ($self->noaction ? "WOULD # " : "" ) . "$cmd\n" if $self->debug;
 
                 system($cmd)
-                    && Mojo::Exception->throw('ERROR: executing receive process') if !$self->noaction;
+                    && Mojo::Exception->throw('ERROR: executing receive process from $srcDataSet to $dstDataSetPath') if !$self->noaction;
             },
             #callback
             sub {
@@ -692,7 +691,7 @@ sub sendRecvSnapshots {
                     system($cmd) || last;
                 }
 
-                $retryCounter <= 0 && Mojo::Exception->throw("ERROR: cannot send snapshots to $dstDataSet"
+                $retryCounter <= 0 && Mojo::Exception->throw("ERROR: cannot send snapshots from $srcDataSet to $dstDataSetPath"
                     . ($remote ? " on $remote" : ''));
             }
         );
@@ -715,7 +714,7 @@ sub sendRecvSnapshots {
         my $cmd = $shellQuote->(@cmd);
         print STDERR "# " . ($self->noaction ? "WOULD # " : "" ) . "$cmd\n" if $self->debug;
 
-        system($cmd) && Mojo::Exception->throw("ERROR: cannot send snapshots to $dstDataSetPath"
+        system($cmd) && Mojo::Exception->throw("ERROR: cannot send snapshots from $srcDataSet to $dstDataSetPath"
             . ($remote ? " on $remote" : '')) if !$self->noaction;
     }
 
