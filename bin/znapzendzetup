@@ -480,12 +480,21 @@ sub main {
             die ("ERROR: Unsupported main option $mainOpt was provided\n");
         }
     }
-    print STDERR <<NOTE;
+    
+    if ($^O eq 'darwin') {
+        print STDERR <<NOTE;
+NOTE: if you have modified your configuration, send a HUP signal
+(sudo launchctl kill -HUP system/org.znapzend) to your znapzend daemon for it to notice the change.
+NOTE
+            } 
+    else    {
+        print STDERR <<NOTE;
 NOTE: if you have modified your configuration, send a HUP signal
 (pkill -HUP znapzend) to your znapzend daemon for it to notice the change.
 NOTE
+            }
     return 1;
-}
+    }
 
 {
     local $@;
@@ -533,6 +542,10 @@ and where 'command' and its unique options is one of the following:
             SRC plan dataset \
             [ DST[:key] plan [[user@]host:]dataset
                 [pre-send-command] [post-send-command] ]
+
+            NOTE: If you specify [user@]host:dataset for remote replication
+            over SSH, make use of ~/.ssh/config for any advanced options
+            (custom ports, keys to use, etc.) See znapzend READNE for ideas.
 
     delete  [--dst=key] <src_dataset>
 

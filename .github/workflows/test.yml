@@ -14,14 +14,15 @@ jobs:
     strategy:
       matrix:
         perl:
+        - "5.32"
         - "5.30"
         - "5.26"
-        - "5.22"
-        - "5.18"
-        - "5.10"
+#        - "5.22"
+#        - "5.18"
+#        - "5.10"
     name: Perl ${{ matrix.perl }}
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - name: Setup perl
       uses: shogo82148/actions-setup-perl@v1
       with:

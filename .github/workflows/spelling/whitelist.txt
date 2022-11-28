@@ -2,9 +2,9 @@ ABuild
 acconfig
 acinclude
 aclocal
-admins
 Aclosed
 adata
+admins
 Affero
 aix
 alpinelinux
@@ -18,6 +18,7 @@ args
 ARGSTR
 ARGV
 asciiphil
+asdf
 astring
 attr
 austingroupbugs
@@ -25,6 +26,7 @@ autocommit
 autoconf
 autom
 automake
+automounting
 autoreconf
 autoscrub
 autotarget
@@ -97,6 +99,8 @@ CONNEC
 Consor
 copyleft
 coreutils
+COUNTFAIL
+COUNTOK
 cpan
 cpanfile
 cpanify
@@ -116,7 +120,7 @@ daemonize
 daemonized
 DAGOLDEN
 datadir
-de'u
+DBD
 debian
 defn
 defun
@@ -125,6 +129,7 @@ dest
 DESTDIR
 destfail
 desttemp
+de'u
 dirname
 distclean
 distdir
@@ -133,19 +138,23 @@ dmp
 dnf
 dnl
 DNO
-Dockerfile
+dockerfile
 DOCTYPE
 DOITPROG
 donotask
+DRBASE
 dsa
 dsq
 dst
+dstbase
 dstdir
+dstdirslash
 dstds
 dstdsname
 DSTFILE
 dstname
 dsttmp
+DTIPS
 DTRT
 dummydataset
 ebuild
@@ -189,6 +198,7 @@ FQSN
 fsf
 gerczei
 Getopt
+gh
 github
 gitignore
 gitlab
@@ -208,9 +218,9 @@ Heitm
 heitmueller
 HMSz
 Honame
+hostname
 html
 http
-hostname
 Hypnotoad
 Icommand
 Icommon
@@ -232,12 +242,10 @@ Ilimited
 illumos
 imandir
 img
-incrementals
 ings
 inh
 inheritedattr
 initscripts
-installdeps
 installinfo
 Inumber
 Inztructionz
@@ -327,6 +335,7 @@ NAL
 namespace
 namespaced
 nano
+NDTIPS
 newcfgdata
 newestbe
 nf
@@ -343,10 +352,12 @@ nostdinc
 notest
 NOTMAKE
 nroff
+NSTIPS
 nvpool
 nytprof
 OBJC
 OBJCXX
+ODBC
 oep
 oetiker
 oi
@@ -367,7 +378,6 @@ pid
 pidfile
 pipefail
 Pipely
-pkg
 pkglicense
 pkgname
 pkgonly
@@ -378,6 +388,7 @@ pkill
 plaintar
 plist
 plugin
+populat
 posix
 prebuilt
 precmd
@@ -402,6 +413,7 @@ recv
 recvu
 redhat
 regex
+regexing
 RESFINAL
 respawn
 resync
@@ -415,6 +427,7 @@ ron
 rootfs
 rootfs'es
 rpool
+rr
 runlevel
 runonce
 rw
@@ -422,8 +435,8 @@ sbin
 sbindir
 screation
 scriptversion
-SEENSRC
 SEENDST
+SEENSRC
 selftest
 sendmail
 setsid
@@ -440,7 +453,6 @@ snapsuffix
 SNO
 solaris
 sourced
-sourceforge
 sourcemissing
 sourcetype
 sourcing
@@ -463,6 +475,7 @@ stderr
 stdin
 stdout
 stefan
+stip
 strftime
 stripcmd
 stripprog
@@ -481,7 +494,7 @@ svcname
 svg
 symlink
 synczbe
-Sys
+sys
 sysadmin
 sysconfdir
 syslog
@@ -490,6 +503,7 @@ systemd
 sysutils
 sysv
 SZ
+TABCHAR
 tabledata
 tarball
 tardir
@@ -524,11 +538,11 @@ unconfigured
 UNCONSIDER
 undef
 undef'ed
-Unicode
+unicode
 uniq
 unsubscribe
 Uplevel
-URL
+url
 usbbackup
 usedbysnapshot
 userland
@@ -536,7 +550,7 @@ username
 userprop
 usr
 ustar
-UTF
+utf
 Utils
 Validator
 varname
@@ -548,6 +562,7 @@ VPATH
 vroff
 vue
 waitpid
+westes
 wget
 whitespaces
 windoz
@@ -556,17 +571,19 @@ WNOHANG
 WORKDIR
 workflow
 Wperl
+WSCHAR
 wu
 www
 wx
-Xproperties
 xargs
 xcode
 xf
 xml
 xno
+Xproperties
 xset
 yacc
+YAML
 Ymd
 yml
 yy
@@ -575,6 +592,7 @@ ZConfig
 zetup
 zfs
 zfsinherit
+zfslist
 zfsutils
 zfsutilsdep
 ZFSW

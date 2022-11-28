@@ -2,7 +2,7 @@ package ZnapZend::ZFS;
 
 use Mojo::Base -base;
 use Mojo::Exception;
-use Mojo::IOLoop::ForkCall;
+use Mojo::IOLoop::Subprocess;
 use Data::Dumper;
 use inheritLevels;
 
@@ -12,6 +12,7 @@ has noaction        => sub { 0 };
 has nodestroy       => sub { 1 };
 has oracleMode      => sub { 0 };
 has recvu           => sub { 0 };
+has resume          => sub { 0 };
 has compressed      => sub { 0 };
 has sendRaw         => sub { 0 };
 has skipIntermediates => sub { 0 };
@@ -36,7 +37,20 @@ has priv            => sub { my $self = shift; [$self->rootExec ? split(/ /, $se
 
 ### private functions ###
 my $splitHostDataSet = sub {
-    return ($_[0] =~ /^(?:([^:\/]+):)?([^:]+|[^:@]+\@.+)$/);
+    # See also https://github.com/oetiker/znapzend/issues/585
+    # If there are further bugs in the regex, comment away the
+    # next implementation line and fall through to verbosely
+    # debugging code below to try and iterate a fix:
+    return ($_[0] =~ /^(?:([^:\/]+):)?([^@\s]+|[^@\s]+\@[^@\s]+)$/);
+
+    my @return;
+    ###push @return, ($_[0] =~ /^(?:(.+)\s)?([^\s]+)$/);
+    ###push @return, ($_[0] =~ /^(?:([^:\/]+):)?([^:]+|[^:@]+\@.+)$/);
+    push @return, ($_[0] =~ /^(?:([^:\/]+):)?([^@\s]+|[^@\s]+\@[^@\s]+)$/);
+    # Note: Claims `Use of uninitialized value $return[0]...` when there
+    # is no remote host portion matched, so using a map to stringify:
+    print STDERR "[D] Split '" . $_[0] . "' into: [" . join(", ", map { defined ? "'$_'" : '<undef>' } @return) . "]\n";# if $self->debug;
+    return @return;
 };
 
 my $splitDataSetSnapshot = sub {
@@ -368,23 +382,28 @@ sub destroySnapshots {
     }
 
     #combinedDestroy
+    #collect "dataset1@snap1,snap2 dataset2@snap1,snap2,snap3..."
+    #to destroy one dataset at a time (maybe many snaps per each)
     for my $task (@toDestroy){
         my ($remote, $dataSetPathAndSnap) = $splitHostDataSet->($task);
         my ($dataSet, $snapshot) = $splitDataSetSnapshot->($dataSetPathAndSnap);
         #tag local snapshots as 'local' so we have a key to build the hash
         $remote = $remote || 'local';
-        exists $toDestroy{$remote} or $toDestroy{$remote} = [];
-        push @{$toDestroy{$remote}}, scalar @{$toDestroy{$remote}} ? $snapshot : "$dataSet\@$snapshot" ;
+        exists $toDestroy{$remote} or $toDestroy{$remote} = {};
+        exists $toDestroy{$remote}{$dataSet} or $toDestroy{$remote}{$dataSet} = [];
+        push @{$toDestroy{$remote}{$dataSet}}, scalar @{$toDestroy{$remote}{$dataSet}} ? $snapshot : "$dataSet\@$snapshot" ;
     }
 
     for $remote (keys %toDestroy){
-        #check if remote is flaged as 'local'.
-        my @ssh = $self->$buildRemote($remote ne 'local'
-            ? $remote : undef, [@{$self->priv}, qw(zfs destroy), @recursive, join(',', @{$toDestroy{$remote}})]);
+        for $dataSet (keys %{$toDestroy{$remote}}){
+            #check if remote is flaged as 'local'.
+            my @ssh = $self->$buildRemote($remote ne 'local'
+                ? $remote : undef, [@{$self->priv}, qw(zfs destroy), @recursive, join(',', @{$toDestroy{$remote}{$dataSet}})]);
 
-        print STDERR '# ' . (($self->noaction || $self->nodestroy) ? "WOULD # " : "")  . join(' ', @ssh) . "\n" if $self->debug;
-        system(@ssh) && Mojo::Exception->throw("ERROR: cannot destroy snapshot(s) $toDestroy[0]")
-            if !($self->noaction || $self->nodestroy);
+            print STDERR '# ' . (($self->noaction || $self->nodestroy) ? "WOULD # " : "")  . join(' ', @ssh) . "\n" if $self->debug;
+            system(@ssh) && Mojo::Exception->throw("ERROR: cannot destroy snapshot(s) $toDestroy[0]")
+                if !($self->noaction || $self->nodestroy);
+        }
     }
 
     return 1;
@@ -536,7 +555,7 @@ sub sendRecvSnapshots {
     my $incrOpt = $self->skipIntermediates ? '-i' : '-I';
     my @sendOpt = $self->compressed ? qw(-Lce) : ();
     push @sendOpt, '-w' if $self->sendRaw;
-
+    push @recvOpt, '-s' if $self->resume;
     my $remote;
     my $mbufferPort;
 
@@ -631,32 +650,27 @@ sub sendRecvSnapshots {
 
         my $cmd = $shellQuote->(@recvCmd);
 
-        my $fc = Mojo::IOLoop::ForkCall->new;
-        $fc->run(
+        my $subprocess = Mojo::IOLoop::Subprocess->new;
+        $subprocess->run(
             #receive worker fork
             sub {
-                my $cmd = shift;
-                my $debug = shift;
-                my $noaction = shift;
-
-                print STDERR "# " . ($self->noaction ? "WOULD # " : "" ) . "$cmd\n" if $debug;
+                print STDERR "# " . ($self->noaction ? "WOULD # " : "" ) . "$cmd\n" if $self->debug;
 
                 system($cmd)
-                    && Mojo::Exception->throw('ERROR: executing receive process') if !$noaction;
+                    && Mojo::Exception->throw('ERROR: executing receive process') if !$self->noaction;
             },
-            #arguments
-            [$cmd, $self->debug, $self->noaction],
             #callback
             sub {
-                my ($fc, $err) = @_;
+                my ($subprocess, $err) = @_;
                 $self->zLog->debug("receive process on $remote done ($recvPid)");
                 Mojo::Exception->throw($err) if $err;
             }
         );
         #spawn event
-        $fc->on(
+        $subprocess->on(
             spawn => sub {
-                my ($fc, $pid) = @_;
+                my ($subprocess) = @_;
+                my $pid = $subprocess->pid;
 
                 $recvPid = $pid;
 
@@ -683,14 +697,14 @@ sub sendRecvSnapshots {
             }
         );
         #error event
-        $fc->on(
+        $subprocess->on(
             error => sub {
-                my ($fc, $err) = @_;
+                my ($subprocess, $err) = @_;
                 die $err;
             }
         );
-        #start forkcall event loop
-        $fc->ioloop->start if !$fc->ioloop->is_running;
+        #start subprocess event loop
+        $subprocess->ioloop->start if !$subprocess->ioloop->is_running;
     }
     else {
         my @mbCmd = $mbuffer ne 'off' ? ([$mbuffer, @{$self->mbufferParam}, $mbufferSize]) : () ;
@@ -1434,10 +1448,32 @@ sub fileExistsAndExec {
     my $remote;
 
     ($remote, $filePath) = $splitHostDataSet->($filePath);
-    my @ssh = $self->$buildRemote($remote, [@{$self->priv}, qw(test -x), $filePath]);
+    my @ssh1 = $self->$buildRemote($remote, [@{$self->priv}, qw(test -x), $filePath]);
+    # Note: with restricted shell setup, users may be unable to run
+    # fully qualified command names (with a slash) but may run what
+    # they have in the PATH.
+    my @ssh2 = $self->$buildRemote($remote, [@{$self->priv}, qw(command -v), $filePath]);
 
-    print STDERR '# ' . join(' ', @ssh) . "\n" if $self->debug;
-    return !system(@ssh);
+    print STDERR '# ' . join(' ', @ssh1) . " || " . join(' ', @ssh2) . "\n" if $self->debug;
+    # Tricks to hide output of `command -v` from perl stdout:
+    if (!system(@ssh1)) {
+        return 1;
+    }
+
+    my $ssh2out = `@ssh2`;
+    if ($? == 0 && defined $ssh2out && $ssh2out ne "") {
+        if ($filePath =~ /\//) {
+            # Nudge the users to verify their config:
+            print STDERR "WARNING: Could not 'test' a qualified executable file path '" . $filePath . "' but confirmed it with 'command -v' - if you use a restricted shell, use basename and PATH\n";
+        } else {
+            # Only show at debug/troubleshooting, as this is sort of expected
+            print STDERR "WARNING: Only found executable file basename '" . $filePath . "' with 'command -v': " . $ssh2out . "\n" if $self->debug;
+        }
+        return 1;
+    }
+
+    # Neither attempt found the command:
+    return 0;
 }
 
 sub listPools {

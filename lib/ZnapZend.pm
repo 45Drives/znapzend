@@ -1,7 +1,7 @@
 package ZnapZend;
 
 use Mojo::Base -base;
-use Mojo::IOLoop::ForkCall;
+use Mojo::IOLoop::Subprocess;
 use Mojo::Log;
 use ZnapZend::Config;
 use ZnapZend::ZFS;
@@ -22,7 +22,9 @@ my %logLevels = (
 );
 
 ### attributes ###
+
 has debug                   => sub { 0 };
+has resume          => sub { 0 };
 has noaction                => sub { 0 };
 has nodestroy               => sub { 0 };
 has oracleMode              => sub { 0 };
@@ -56,6 +58,7 @@ has cleanOffline            => sub { 0 };
 has 'mailErrorSummaryTo';
 has backupSets              => sub { [] };
 
+
 has zConfig => sub {
     my $self = shift;
     ZnapZend::Config->new(debug => $self->debug, noaction => $self->noaction,
@@ -68,6 +71,7 @@ has zZfs => sub {
     my $self = shift;
     ZnapZend::ZFS->new(debug => $self->debug, noaction => $self->noaction,
         nodestroy => $self->nodestroy, oracleMode => $self->oracleMode,
+        resume => $self->resume,
         recvu => $self->recvu, connectTimeout => $self->connectTimeout,
         lowmemRecurse => $self->lowmemRecurse, skipIntermediates => $self->skipIntermediates,
         rootExec => $self->rootExec, zfsGetType => $self->zfsGetType,
@@ -783,18 +787,17 @@ my $sendRecvCleanup = sub {
             #my $mailprog = '/usr/lib/sendmail';
             my $mailprog = '/usr/sbin/sendmail';
             #my $from_address = "`id`@`hostname`" ;
-            if (open (MAIL, "|$mailprog -t " . $self->mailErrorSummaryTo)) {
+            if (open my $mail, "|-", $mailprog,'-t') {
                 $self->zLog->warn('Sending a copy of the report above to ' . $self->mailErrorSummaryTo);
-                print MAIL "To: " . $self->mailErrorSummaryTo . "\n";
+                print $mail "To: " . $self->mailErrorSummaryTo . "\n";
                 #print MAIL "From: " . $from_address . "\n";
-                print MAIL "Subject: znapzend replication error summary\n";
-                print MAIL "-------\n";
-                print MAIL $errmsg;
-                print MAIL "-------\n";
-                print MAIL ".\n";
-                close(MAIL);
+                print $mail "Subject: znapzend replication error summary\n";
+                print $mail "-------\n";
+                print $mail $errmsg;
+                print $mail "-------\n";
+                print $mail ".\n";
             } else {
-                warn "Can't open $mailprog to send a copy of the report above to " . $self->mailErrorSummaryTo . "!\n";
+                warn "Problem starting $mailprog to send a copy of the report above to " . $self->mailErrorSummaryTo . " - $!\n";
             }
         }
     }
@@ -1073,7 +1076,7 @@ my $createSnapshot = sub {
             # removal here is non-recursive to allow for fine-grained control
             if ( @dataSetsExplicitlyDisabled ){
                $self->zLog->info("Requesting removal of marked datasets: ". join( ", ", @dataSetsExplicitlyDisabled));
-               $self->zZfs->destroySnapshots(@dataSetsExplicitlyDisabled, 0);
+               $self->zZfs->destroySnapshots(\@dataSetsExplicitlyDisabled, 0);
            }
         }
     }
@@ -1095,15 +1098,15 @@ my $sendWorker = sub {
 ### RM_COMM_4_TEST ###  return;
 
     #send/receive fork
-    my $fc = Mojo::IOLoop::ForkCall->new;
-    $fc->run(
+    my $subprocess = Mojo::IOLoop::Subprocess->new;
+    $subprocess->run(
         #send/receive worker
-        $sendRecvCleanup,
-        #send/receive worker arguments
-        [$self, $backupSet, $timeStamp],
+        sub {
+            return $sendRecvCleanup->($self, $backupSet, $timeStamp);
+        },
         #send/receive worker callback
         sub {
-            my ($fc, $err) = @_;
+            my ($subprocess, $err) = @_;
 
             $self->zLog->warn('send/receive for ' . $backupSet->{src}
                 . ' failed: ' . $err) if $err;
@@ -1116,9 +1119,10 @@ my $sendWorker = sub {
     );
 
     #spawn event
-    $fc->on(
+    $subprocess->on(
         spawn => sub {
-            my ($fc, $pid) = @_;
+            my ($subprocess) = @_;
+            my $pid = $subprocess->pid;
 
             $self->zLog->debug('send/receive worker for ' . $backupSet->{src}
                 . " spawned ($pid)");
@@ -1127,9 +1131,9 @@ my $sendWorker = sub {
     );
 
     #error event
-    $fc->on(
+    $subprocess->on(
         error => sub {
-            my ($fc, $err) = @_;
+            my ($subprocess, $err) = @_;
 
             $self->zLog->warn($err) if !$self->terminate;
         }
@@ -1147,15 +1151,15 @@ my $snapWorker = sub {
 ### RM_COMM_4_TEST ###  return;
 
     #snapshot fork
-    my $fc = Mojo::IOLoop::ForkCall->new;
-    $fc->run(
+    my $subprocess = Mojo::IOLoop::Subprocess->new;
+    $subprocess->run(
         #snapshot worker
-        $createSnapshot,
-        #snapshot worker arguments
-        [$self, $backupSet, $timeStamp],
+        sub {
+            return $createSnapshot->($self, $backupSet, $timeStamp);
+        },
         #snapshot worker callback
         sub {
-            my ($fc, $err) = @_;
+            my ($subprocess, $err) = @_;
 
             $self->zLog->warn('taking snapshot on ' . $backupSet->{src}
                 . ' failed: ' . $err) if $err;
@@ -1176,9 +1180,10 @@ my $snapWorker = sub {
     );
 
     #spawn event
-    $fc->on(
+    $subprocess->on(
         spawn => sub {
-            my ($fc, $pid) = @_;
+            my ($subprocess) = @_;
+            my $pid = $subprocess->pid;
 
             $self->zLog->debug('snapshot worker for ' . $backupSet->{src}
                 . " spawned ($pid)");
@@ -1187,9 +1192,9 @@ my $snapWorker = sub {
     );
 
     #error event
-    $fc->on(
+    $subprocess->on(
         error => sub {
-            my ($fc, $err) = @_;
+            my ($subprocess, $err) = @_;
 
             $self->zLog->warn($err) if !$self->terminate;
         }

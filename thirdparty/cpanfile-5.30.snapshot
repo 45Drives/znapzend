@@ -59,18 +59,19 @@ DISTRIBUTIONS
       Text::ParseWords 0
       perl 5.006001
       version 0.87
-  Mojo-IOLoop-ForkCall-0.20
-    pathname: J/JB/JBERGER/Mojo-IOLoop-ForkCall-0.20.tar.gz
+  Mojo-IOLoop-ForkCall-0.21
+    pathname: J/JB/JBERGER/Mojo-IOLoop-ForkCall-0.21.tar.gz
     provides:
-      Mojo::IOLoop::ForkCall 0.20
+      Mojo::IOLoop::ForkCall 0.21
       Mojolicious::Plugin::ForkCall undef
     requirements:
       IO::Pipely 0
       Module::Build 0.38
+      Mojo::IOLoop::Delay 0
       Mojolicious 5.08
       Perl::OSType 0
-  Mojolicious-8.35
-    pathname: S/SR/SRI/Mojolicious-8.35.tar.gz
+  Mojolicious-8.73
+    pathname: S/SR/SRI/Mojolicious-8.73.tar.gz
     provides:
       Mojo undef
       Mojo::Asset undef
@@ -139,11 +140,12 @@ DISTRIBUTIONS
       Mojo::UserAgent::Transactor undef
       Mojo::Util undef
       Mojo::WebSocket undef
-      Mojolicious 8.35
+      Mojolicious 8.73
       Mojolicious::Command undef
       Mojolicious::Command::Author::cpanify undef
       Mojolicious::Command::Author::generate undef
       Mojolicious::Command::Author::generate::app undef
+      Mojolicious::Command::Author::generate::dockerfile undef
       Mojolicious::Command::Author::generate::lite_app undef
       Mojolicious::Command::Author::generate::makefile undef
       Mojolicious::Command::Author::generate::plugin undef
@@ -167,6 +169,7 @@ DISTRIBUTIONS
       Mojolicious::Plugin::HeaderCondition undef
       Mojolicious::Plugin::JSONConfig undef
       Mojolicious::Plugin::Mount undef
+      Mojolicious::Plugin::NotYAMLConfig undef
       Mojolicious::Plugin::TagHelpers undef
       Mojolicious::Plugins undef
       Mojolicious::Renderer undef
@@ -184,10 +187,8 @@ DISTRIBUTIONS
     requirements:
       ExtUtils::MakeMaker 0
       IO::Socket::IP 0.37
-      JSON::PP 2.27103
-      List::Util 1.41
-      Time::Local 1.2
-      perl 5.010001
+      Sub::Util 1.41
+      perl 5.016
   Sub-Uplevel-0.2800
     pathname: D/DA/DAGOLDEN/Sub-Uplevel-0.2800.tar.gz
     provides:
@@ -215,3 +216,17 @@ DISTRIBUTIONS
       perl 5.006001
       strict 0
       warnings 0
+  Test-SharedFork-0.35
+    pathname: E/EX/EXODIST/Test-SharedFork-0.35.tar.gz
+    provides:
+      Test::SharedFork 0.35
+      Test::SharedFork::Array undef
+      Test::SharedFork::Scalar undef
+      Test::SharedFork::Store undef
+    requirements:
+      ExtUtils::MakeMaker 6.64
+      File::Temp 0
+      Test::Builder 0.32
+      Test::Builder::Module 0
+      Test::More 0.88
+      perl 5.008_001
