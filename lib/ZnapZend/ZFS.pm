@@ -625,7 +625,7 @@ sub sendRecvSnapshots {
                     ) if (!$lastCommon && $dstSnapCountAll>0);
         } else {
             Mojo::Exception->throw('ERROR: snapshot(s) exist on destination, but '
-            . 'no common found on source:' $srcDataSet 'and destination:' $dstDataSet ' clean up destination '
+            . 'no common found on source: ' . $srcDataSet . ' and destination: ' . $dstDataSet . ' clean up destination '
             . $dstDataSet . ' (i.e. destroy existing snapshots)');
         }
     }
